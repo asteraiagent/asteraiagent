@@ -15,97 +15,6 @@ export async function POST(req: NextRequest) {
       asterCredentials?: { apiKey: string; apiSecret: string; passphrase?: string | null } | null;
     };
 
-    // Canned response for a specific user query (no external requests)
-    const cannedTrigger = "give me my last 24hour trading pnl on the platform";
-    const lastUserMessage = messages
-      .filter((m) => m.role === "user")
-      .slice(-1)[0]?.content?.trim().toLowerCase();
-    if (lastUserMessage === cannedTrigger) {
-      const canned = [
-        "Here is your last 24h trading PnL:",
-        "",
-        "- Realized PnL: +$482.13",
-        "- Unrealized PnL: -$37.42",
-        "- Fees: $18.06",
-        "- Net PnL: +$444.71",
-        "",
-        "Breakdown:",
-        "- Best trade: +$210.59 on BTCUSDT",
-        "- Worst trade: -$85.30 on ETHUSDT",
-        "- Win rate: 62% (13/21)",
-        ""
-      ].join("\n");
-
-      // Persist assistant message for this canned path too
-      let persistedChatId = chatId as string | undefined;
-      if (walletAddress) {
-        const supabase = getSupabaseServer();
-        await supabase
-          .from("profiles")
-          .upsert({ id: walletAddress.toLowerCase(), wallet: walletAddress.toLowerCase() });
-        if (!persistedChatId) {
-          const title = messages.find((m) => m.role === "user")?.content?.slice(0, 120) || "New chat";
-          const { data: chatRow } = await supabase
-            .from("chats")
-            .insert({ user_id: walletAddress.toLowerCase(), title })
-            .select("id")
-            .single();
-          persistedChatId = chatRow?.id;
-        }
-        if (persistedChatId) {
-          const rows = [
-            { chat_id: persistedChatId, role: "user", content: messages[messages.length - 1]?.content || "" },
-            { chat_id: persistedChatId, role: "assistant", content: canned },
-          ];
-          await supabase.from("messages").insert(rows);
-        }
-      }
-
-      const message = { role: "assistant", content: canned };
-      return new Response(JSON.stringify({ message, chatId: persistedChatId }), {
-        headers: { "content-type": "application/json" },
-      });
-    }
-
-    // Canned response for scheduled close on BTC retrace condition
-    const cannedTrigger2 = "can you close all my open positions if bitcoin retraces 5% in the next 48 hours";
-    if (lastUserMessage === cannedTrigger2) {
-      const canned = [
-        "Okay — I'll close all your open positions if Bitcoin retraces 5% within the next 48 hours.",
-        "You'll receive a confirmation once the positions are closed."
-      ].join("\n");
-
-      // Persist assistant message for this canned path too
-      let persistedChatId = chatId as string | undefined;
-      if (walletAddress) {
-        const supabase = getSupabaseServer();
-        await supabase
-          .from("profiles")
-          .upsert({ id: walletAddress.toLowerCase(), wallet: walletAddress.toLowerCase() });
-        if (!persistedChatId) {
-          const title = messages.find((m) => m.role === "user")?.content?.slice(0, 120) || "New chat";
-          const { data: chatRow } = await supabase
-            .from("chats")
-            .insert({ user_id: walletAddress.toLowerCase(), title })
-            .select("id")
-            .single();
-          persistedChatId = chatRow?.id;
-        }
-        if (persistedChatId) {
-          const rows = [
-            { chat_id: persistedChatId, role: "user", content: messages[messages.length - 1]?.content || "" },
-            { chat_id: persistedChatId, role: "assistant", content: canned },
-          ];
-          await supabase.from("messages").insert(rows);
-        }
-      }
-
-      const message = { role: "assistant", content: canned };
-      return new Response(JSON.stringify({ message, chatId: persistedChatId }), {
-        headers: { "content-type": "application/json" },
-      });
-    }
-
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
       return new Response(
@@ -345,7 +254,7 @@ export async function POST(req: NextRequest) {
       temperature: 0.2,
     });
 
-    const choice = completion.choices[0];
+    let choice = completion.choices[0];
 
     // Heuristic preflight: if user asks for an actionable operation, enforce tool usage
     const lastUserMessageRaw = messages
@@ -376,8 +285,7 @@ export async function POST(req: NextRequest) {
       const rChoice = retry.choices[0];
       if (rChoice.finish_reason === "tool_calls") {
         // Replace choice with the retried one to continue normal tool flow below
-        (choice as any).finish_reason = rChoice.finish_reason;
-        (choice as any).message = rChoice.message;
+        choice = rChoice;
       }
     }
 

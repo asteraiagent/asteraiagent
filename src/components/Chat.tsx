@@ -219,7 +219,7 @@ export default function Chat() {
                 <img src="/discord.svg" alt="Discord" className="h-6 w-6 sm:h-7 sm:w-7 opacity-90 hover:opacity-100" />
               </a>
               <a
-                href="https://github.com/agent-aster"
+                href="https://github.com/asteraiagent/"
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="GitHub"
