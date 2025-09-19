@@ -12,7 +12,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 OPENAI_API_KEY=
 NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=
-NEXT_PUBLIC_ASTER_BASE_URL=https://api.aster.finance
+NEXT_PUBLIC_ASTER_BASE_URL=https://fapi.asterdex.com
 ```
 
 2. Apply Supabase schema in `supabase.sql`.
